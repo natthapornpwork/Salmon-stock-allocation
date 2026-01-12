@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:allocation_app/core/types.dart';
 import 'package:allocation_app/data/models/allocation.dart';
 import 'package:allocation_app/data/models/order.dart';
 import 'package:allocation_app/data/models/price.dart';
 import 'package:allocation_app/data/models/stock.dart';
-import 'package:allocation_app/domain/manual/manual_allocation_service.dart';
+import 'package:allocation_app/service/manual/manual_allocation_service.dart';
 
 void main() {
   PriceTable priceTable() {

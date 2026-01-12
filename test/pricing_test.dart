@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:allocation_app/data/models/order.dart';
 import 'package:allocation_app/data/models/price.dart';
-import 'package:allocation_app/domain/allocator/pricing.dart';
+import 'package:allocation_app/service/allocator/pricing_service.dart';
 
 void main() {
   test('SP-000 uses cheapest supplier base price for that item', () {

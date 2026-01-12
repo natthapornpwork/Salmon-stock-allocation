@@ -5,7 +5,7 @@ import '../../core/types.dart';
 import '../../data/models/allocation.dart';
 import '../../data/models/order.dart';
 import '../../data/models/stock.dart';
-import '../../domain/allocator/pricing.dart';
+import '../../service/allocator/pricing_service.dart';
 import '../blocs/allocation_bloc.dart';
 
 class AllocationEditorDialog extends StatefulWidget {
@@ -67,8 +67,8 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                     .firstWhere((o) => o.orderId == widget.orderId);
 
                 final priceTable = state.priceTable!;
-                final unitPrice = unitPriceForOrder(
-                    order: order, priceTable: priceTable);
+                final unitPrice =
+                    unitPriceForOrder(order: order, priceTable: priceTable);
 
                 final oldAlloc = state.allocationsByOrderId[order.orderId] ??
                     OrderAllocation(orderId: order.orderId, lines: const []);
@@ -85,7 +85,6 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
                       Row(
                         children: [
                           Expanded(
@@ -102,8 +101,6 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                         ],
                       ),
                       const SizedBox(height: 10),
-
-                      // Order details (READ-ONLY)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
@@ -125,10 +122,7 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
-                      // Summary chips
                       Wrap(
                         spacing: 12,
                         runSpacing: 8,
@@ -159,8 +153,6 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                                 color: Theme.of(context).colorScheme.error),
                           ),
                         ),
-
-                      // Allocation lines (READ-ONLY LIST)
                       Expanded(
                         child: Card(
                           child: Padding(
@@ -275,10 +267,7 @@ class _AllocationEditorDialogState extends State<AllocationEditorDialog> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
-                      // Bottom actions
                       Row(
                         children: [
                           const Spacer(),
@@ -398,13 +387,15 @@ class _AllocationLineEditDialogState extends State<_AllocationLineEditDialog> {
     final state = widget.state;
 
     final allowedWarehouses = _warehousesFor(order, state);
-    if (!allowedWarehouses.contains(warehouseId))
+    if (!allowedWarehouses.contains(warehouseId)) {
       warehouseId = allowedWarehouses.first;
+    }
 
     final allowedSuppliers =
         _suppliersFor(order, state, selectedWarehouse: warehouseId);
-    if (!allowedSuppliers.contains(supplierId))
+    if (!allowedSuppliers.contains(supplierId)) {
       supplierId = allowedSuppliers.first;
+    }
 
     final key = StockKey(
       warehouseId: warehouseId,
@@ -586,7 +577,7 @@ class _AllocationLineEditDialogState extends State<_AllocationLineEditDialog> {
     if (parts.length > 1) {
       final f = parts[1];
       if (f.isNotEmpty) {
-        final two = (f + '00').substring(0, 2);
+        final two = ('${f}00').substring(0, 2);
         frac = int.tryParse(two) ?? 0;
       }
     }
@@ -611,9 +602,7 @@ class _DraftLine {
   factory _DraftLine.fromOrder(Order order, AllocationState state) {
     if (order.warehouseId != 'WH-000' && order.supplierId != 'SP-000') {
       return _DraftLine(
-          warehouseId: order.warehouseId,
-          supplierId: order.supplierId,
-          qty: 0);
+          warehouseId: order.warehouseId, supplierId: order.supplierId, qty: 0);
     }
 
     StockKey? best;
@@ -621,10 +610,12 @@ class _DraftLine {
     for (final e in state.remainingStock.entries) {
       final k = e.key;
       if (k.itemId != order.itemId) continue;
-      if (order.warehouseId != 'WH-000' && k.warehouseId != order.warehouseId)
+      if (order.warehouseId != 'WH-000' && k.warehouseId != order.warehouseId) {
         continue;
-      if (order.supplierId != 'SP-000' && k.supplierId != order.supplierId)
+      }
+      if (order.supplierId != 'SP-000' && k.supplierId != order.supplierId) {
         continue;
+      }
       if (e.value > bestQty) {
         bestQty = e.value;
         best = k;

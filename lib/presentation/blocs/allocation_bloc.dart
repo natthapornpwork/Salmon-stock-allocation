@@ -11,9 +11,9 @@ import '../../data/models/customer.dart';
 import '../../data/models/order.dart';
 import '../../data/models/price.dart';
 import '../../data/models/stock.dart';
-import '../../domain/allocator/allocation_engine.dart';
-import '../../domain/allocator/pricing.dart';
-import '../../domain/manual/manual_allocation_service.dart';
+import '../../service/allocator/auto_allocation_service.dart';
+import '../../service/allocator/pricing_service.dart';
+import '../../service/manual/manual_allocation_service.dart';
 
 part 'allocation_event.dart';
 part 'allocation_state.dart';
@@ -32,7 +32,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
     on<AllocationManualAllocationSubmitted>(_onManualAllocationSubmitted);
     on<AllocationTypeFilterChanged>(_onTypeFilterChanged);
     on<AllocationReAutoRequested>(_onReAutoRequested);
-    on<AllocationOrderLockToggled>(_onOrderLockToggled);
+    on<AllocationOrderDeselected>(_onOrderDeselected);
   }
 
   final MockRepository _repo;
@@ -109,8 +109,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
         remainingCredit: result.remainingCredit,
         remainingStock: result.remainingStock,
         priceTable: data.priceTable,
-        selectedOrderId: data.orders.isEmpty ? null : data.orders.first.orderId,
-        lockedOrderIds: const <String>{},
+        selectedOrderId: null,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -169,6 +168,14 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
     emit(state.copyWith(selectedOrderId: event.orderId));
   }
 
+  void _onOrderDeselected(
+    AllocationOrderDeselected event,
+    Emitter<AllocationState> emit,
+  ) {
+    if (state.selectedOrderId == null) return;
+    emit(state.copyWith(selectedOrderId: null));
+  }
+
   void _onManualAllocationSubmitted(
     AllocationManualAllocationSubmitted event,
     Emitter<AllocationState> emit,
@@ -193,8 +200,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
       ));
       return;
     }
-    final nextLocked = {...state.lockedOrderIds, event.orderId};
-
+    final nextPinned = {...state.pinnedOrderIds, event.orderId};
     final oldAlloc = state.allocationsByOrderId[event.orderId] ??
         OrderAllocation(orderId: event.orderId, lines: const []);
 
@@ -225,18 +231,15 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
             Map<String, OrderAllocation>.from(state.allocationsByOrderId);
         nextAllocs[order.orderId] = outcome.allocation;
 
-
         emit(state
             .copyWith(
               allocationsByOrderId: nextAllocs,
               remainingStock: outcome.nextRemainingStock,
               remainingCredit: outcome.nextRemainingCredit,
-              lockedOrderIds: nextLocked,
+              pinnedOrderIds: nextPinned,
             )
             .withManualSave(
-                orderId: order.orderId,
-                success: true,
-                message: 'Saved & locked.'));
+                orderId: order.orderId, success: true, message: 'Saved'));
         return;
     }
   }
@@ -252,7 +255,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
         status: AllocationStatus.runningAuto, errorMessage: null));
 
     try {
-      final locked = state.lockedOrderIds;
+      final locked = state.pinnedOrderIds;
 
       final stockLeft = Map<StockKey, Qty>.from(_baseStock);
       final creditLeft = Map<String, Money>.from(_baseCredit);
@@ -273,7 +276,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
 
         final unitPrice =
             unitPriceForOrder(order: order, priceTable: priceTable);
-        final cost = alloc.totalQty * unitPrice; // Qty is int units now
+        final cost = alloc.totalQty * unitPrice;
         creditLeft[order.customerId] =
             ((creditLeft[order.customerId] ?? 0) - cost).clamp(0, 1 << 62);
       }
@@ -316,7 +319,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
         status: AllocationStatus.ready,
         allocationsByOrderId: merged,
         remainingStock: result.remainingStock,
-        remainingCredit: nextCredit, // ✅ stable
+        remainingCredit: nextCredit,
         ordersVisible: _applyQueryAndFilter(
             state.ordersAll, state.query, state.filterType),
       ));
@@ -324,19 +327,6 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
       emit(state.copyWith(
           status: AllocationStatus.failure, errorMessage: e.toString()));
     }
-  }
-
-  void _onOrderLockToggled(
-    AllocationOrderLockToggled event,
-    Emitter<AllocationState> emit,
-  ) {
-    final next = {...state.lockedOrderIds};
-    if (event.locked) {
-      next.add(event.orderId);
-    } else {
-      next.remove(event.orderId);
-    }
-    emit(state.copyWith(lockedOrderIds: next));
   }
 
   void _onTypeFilterChanged(
@@ -356,10 +346,8 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
   List<Order> _applyQueryAndFilter(
       List<Order> input, String q, OrderType? filter) {
     final trimmed = q.trim();
-
-    // 1) Exact SUB-order id jump (fast path)
     if (trimmed.isNotEmpty) {
-      final exact = _orderById[trimmed]; // keyed by sub-order orderId
+      final exact = _orderById[trimmed];
       if (exact != null) {
         if (filter != null && exact.type != filter) return const [];
         return [exact];
@@ -368,14 +356,11 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
 
     Iterable<Order> it = input;
 
-    // 2) Type filter
     if (filter != null) {
       it = it.where((o) => o.type == filter);
     }
 
-    // 3) Query handling
     if (trimmed.isNotEmpty) {
-      // 3a) Exact PARENT-order id match => show ALL sub-orders in that parent
       final parentMatches =
           it.where((o) => o.parentOrderId == trimmed).toList(growable: false);
 
@@ -390,15 +375,13 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
         return parentMatches;
       }
 
-      // 3b) Fuzzy search (contains)
       final needle = trimmed.toLowerCase();
       it = it.where((o) {
-        final blob = _searchBlobByOrderId[o.orderId]; // keyed by sub-order id
+        final blob = _searchBlobByOrderId[o.orderId];
         return blob != null && blob.contains(needle);
       });
     }
 
-    // 4) Sort by priority + FIFO + orderId
     final list = it.toList(growable: false);
     list.sort((a, b) {
       final p = _typePriority(a.type).compareTo(_typePriority(b.type));
@@ -418,7 +401,6 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
         OrderType.daily => 3,
       };
 
-  // --------- Page 3: Isolate auto-allocation ----------
   Future<AllocationResult> _runAutoAllocationInIsolate({
     required List<Order> orders,
     required Map<StockKey, Qty> stock,
@@ -466,7 +448,7 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
       if (qty <= 0) continue;
 
       final unitPrice = unitPriceForOrder(order: o, priceTable: priceTable);
-      final cost = qty * unitPrice; // qty = int units, unitPrice = satang/unit
+      final cost = qty * unitPrice;
 
       remaining[o.customerId] =
           ((remaining[o.customerId] ?? 0) - cost).clamp(0, 1 << 62);
@@ -475,8 +457,6 @@ class AllocationBloc extends Bloc<AllocationEvent, AllocationState> {
     return remaining;
   }
 }
-
-// Minimal debounce without rxdart
 extension _DebounceExt<T> on Stream<T> {
   Stream<T> debounceTime(Duration duration) {
     Timer? timer;
@@ -490,14 +470,15 @@ extension _DebounceExt<T> on Stream<T> {
             last = event;
             timer?.cancel();
             timer = Timer(duration, () {
-              if (!controller!.isClosed && last != null)
-                controller!.add(last as T);
+              if (!controller!.isClosed && last != null) {
+                controller.add(last as T);
+              }
             });
           },
           onError: (Object e, StackTrace st) => controller!.addError(e, st),
           onDone: () async {
             timer?.cancel();
-            if (!controller!.isClosed) await controller!.close();
+            if (!controller!.isClosed) await controller.close();
           },
           cancelOnError: false,
         );
@@ -511,11 +492,6 @@ extension _DebounceExt<T> on Stream<T> {
     return controller.stream;
   }
 }
-
-// =======================
-// Isolate encode/compute/decode (TOP LEVEL helpers)
-// Everything below must be top-level or static-like for isolate safety.
-// =======================
 
 Map<String, dynamic> _encodePayload({
   required List<Order> orders,
@@ -564,7 +540,6 @@ Map<String, dynamic> _encodePayload({
 }
 
 Map<String, dynamic> _autoAllocCompute(Map<String, dynamic> payload) {
-  // Decode
   final ordersJson = (payload['orders'] as List).cast<Map>();
   final stockJson = (payload['stock'] as List).cast<Map>();
   final credit = Map<String, int>.from(payload['credit'] as Map);
@@ -611,7 +586,6 @@ Map<String, dynamic> _autoAllocCompute(Map<String, dynamic> payload) {
   final priceTable =
       PriceTable(baseUnitPriceSatang: base, typeMultiplierBp: mult);
 
-  // Compute
   final result = AllocationEngine().autoAllocateAll(
     orders: orders,
     stock: stock,
@@ -619,7 +593,6 @@ Map<String, dynamic> _autoAllocCompute(Map<String, dynamic> payload) {
     priceTable: priceTable,
   );
 
-  // Encode output
   return {
     'allocations': result.allocationsByOrderId.values
         .map((oa) => {

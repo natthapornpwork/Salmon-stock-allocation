@@ -49,7 +49,7 @@ class AllocationManualAllocationSubmitted extends AllocationEvent {
 }
 
 class AllocationTypeFilterChanged extends AllocationEvent {
-  final OrderType? filterType; // null = ALL
+  final OrderType? filterType;
   const AllocationTypeFilterChanged(this.filterType);
 
   @override
@@ -60,12 +60,9 @@ class AllocationReAutoRequested extends AllocationEvent {
   const AllocationReAutoRequested();
 }
 
-class AllocationOrderLockToggled extends AllocationEvent {
-  final String orderId;
-  final bool locked;
-  const AllocationOrderLockToggled(
-      {required this.orderId, required this.locked});
+class AllocationOrderDeselected extends AllocationEvent {
+  const AllocationOrderDeselected();
 
   @override
-  List<Object?> get props => [orderId, locked];
+  List<Object?> get props => const [];
 }

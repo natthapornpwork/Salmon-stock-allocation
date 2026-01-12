@@ -21,7 +21,7 @@ class AllocationState extends Equatable {
   final bool? manualSaveSuccess;
   final String? manualSaveMessage;
   final OrderType? filterType;
-  final Set<String> lockedOrderIds;
+  final Set<String> pinnedOrderIds;
 
   const AllocationState({
     this.status = AllocationStatus.initial,
@@ -40,12 +40,12 @@ class AllocationState extends Equatable {
     this.manualSaveSuccess,
     this.manualSaveMessage,
     this.filterType,
-    this.lockedOrderIds = const <String>{},
+    this.pinnedOrderIds = const <String>{},
   });
 
   AllocationState copyWith({
     AllocationStatus? status,
-    String? errorMessage,
+    Object? errorMessage = _unset,
     String? query,
     List<Order>? ordersAll,
     List<Order>? ordersVisible,
@@ -54,13 +54,15 @@ class AllocationState extends Equatable {
     Map<String, OrderAllocation>? allocationsByOrderId,
     Map<StockKey, Qty>? remainingStock,
     Map<String, Money>? remainingCredit,
-    String? selectedOrderId,
+    Object? selectedOrderId = _unset,
     Object? filterType = _unset,
-    Set<String>? lockedOrderIds,
+    Set<String>? pinnedOrderIds,
   }) {
     return AllocationState(
       status: status ?? this.status,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: identical(errorMessage, _unset)
+          ? this.errorMessage
+          : errorMessage as String?,
       query: query ?? this.query,
       ordersAll: ordersAll ?? this.ordersAll,
       ordersVisible: ordersVisible ?? this.ordersVisible,
@@ -69,7 +71,9 @@ class AllocationState extends Equatable {
       allocationsByOrderId: allocationsByOrderId ?? this.allocationsByOrderId,
       remainingStock: remainingStock ?? this.remainingStock,
       remainingCredit: remainingCredit ?? this.remainingCredit,
-      selectedOrderId: selectedOrderId ?? this.selectedOrderId,
+      selectedOrderId: identical(selectedOrderId, _unset)
+          ? this.selectedOrderId
+          : selectedOrderId as String?,
       manualSaveNonce: manualSaveNonce,
       manualSaveOrderId: manualSaveOrderId,
       manualSaveSuccess: manualSaveSuccess,
@@ -77,7 +81,7 @@ class AllocationState extends Equatable {
       filterType: identical(filterType, _unset)
           ? this.filterType
           : filterType as OrderType?,
-      lockedOrderIds: lockedOrderIds ?? this.lockedOrderIds,
+      pinnedOrderIds: pinnedOrderIds ?? this.pinnedOrderIds,
     );
   }
 
@@ -102,7 +106,7 @@ class AllocationState extends Equatable {
       manualSaveOrderId: orderId,
       manualSaveSuccess: success,
       manualSaveMessage: message,
-      lockedOrderIds: lockedOrderIds,
+      pinnedOrderIds: pinnedOrderIds,
       filterType: filterType,
     );
   }
@@ -125,6 +129,6 @@ class AllocationState extends Equatable {
         manualSaveSuccess,
         manualSaveMessage,
         filterType,
-        lockedOrderIds,
+        pinnedOrderIds,
       ];
 }

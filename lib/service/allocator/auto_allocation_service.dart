@@ -3,7 +3,7 @@ import '../../data/models/allocation.dart';
 import '../../data/models/order.dart';
 import '../../data/models/price.dart';
 import '../../data/models/stock.dart';
-import 'pricing.dart';
+import 'pricing_service.dart';
 
 class AllocationResult {
   final Map<String, OrderAllocation> allocationsByOrderId;
@@ -28,7 +28,6 @@ class AllocationEngine {
         final p = _typePriority(a.type).compareTo(_typePriority(b.type));
         if (p != 0) return p;
 
-        // ✅ New: double wildcard first, then single wildcard, then fixed
         final w = _wildcardPriority(a).compareTo(_wildcardPriority(b));
         if (w != 0) return w;
 
@@ -101,9 +100,9 @@ class AllocationEngine {
   int _wildcardPriority(Order o) {
     final anyWh = o.warehouseId == 'WH-000';
     final anySp = o.supplierId == 'SP-000';
-    if (anyWh && anySp) return 0; // first
-    if (anyWh || anySp) return 1; // second
-    return 2; // last
+    if (anyWh && anySp) return 0;
+    if (anyWh || anySp) return 1;
+    return 2;
   }
 
   List<StockKey> _candidateStocksForOrder(
@@ -118,7 +117,6 @@ class AllocationEngine {
       return true;
     }).toList();
 
-    // Prioritize the highest remaining stock
     list.sort((a, b) => (stockLeft[b] ?? 0).compareTo(stockLeft[a] ?? 0));
     return list;
   }

@@ -24,7 +24,7 @@ class MockRepository {
   MockDataSet? _cache;
 
   Future<MockDataSet> load() async {
-    _cache ??= _build(seed: 8, orderCount: 100);
+    _cache ??= _build(seed: 8, orderCount: 5000);
     return _cache!;
   }
 
@@ -36,8 +36,8 @@ class MockRepository {
     final suppliers = ['SP-001', 'SP-002', 'SP-003'];
 
     final customers = List.generate(4, (i) {
-      final id = 'CT-${(1000 + i)}';
-      final creditBaht = 20000 + rnd.nextInt(380000);
+      final id = 'CT-${(1001 + i)}';
+      final creditBaht = 200000000 + rnd.nextInt(38000000);
       final creditSatang = creditBaht * 100;
       return Customer(customerId: id, creditSatang: creditSatang);
     });
@@ -116,7 +116,6 @@ class MockRepository {
             '$parentOrderId-${(j + 1).toString().padLeft(3, '0')}';
 
         final item = items[rnd.nextInt(items.length)];
-// More frequent wildcards (and explicit double-wildcard cases)
         final roll = rnd.nextInt(100);
 
         late final String wh;
@@ -153,7 +152,9 @@ class MockRepository {
           createdAt: createdAt,
           customerId: customer,
           remark: (type == OrderType.emergency && rnd.nextBool())
-              ? 'Special for VIP'
+              ? 'Special for VIP — handle with care.\n'
+                  'This order needs to be delivered ASAP.\n'
+                  'Contact customer before delivery.'
               : '',
         ));
       }
@@ -161,7 +162,6 @@ class MockRepository {
       parentIndex++;
     }
 
-    // Guarantee: at least 1 order per OrderType has WH-000 & SP-000
     for (final t in OrderType.values) {
       final hasDoubleWildcard = orders.any((o) =>
           o.type == t && o.warehouseId == 'WH-000' && o.supplierId == 'SP-000');

@@ -13,10 +13,7 @@ class PriceKey extends Equatable {
 }
 
 class PriceTable extends Equatable {
-  /// unit price at 100% in satang (฿0.01)
   final Map<PriceKey, Money> baseUnitPriceSatang;
-
-  /// basis points. 10000 = 100%
   final Map<OrderType, int> typeMultiplierBp;
 
   const PriceTable({

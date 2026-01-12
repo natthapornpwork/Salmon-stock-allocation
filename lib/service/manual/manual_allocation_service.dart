@@ -3,7 +3,7 @@ import '../../data/models/allocation.dart';
 import '../../data/models/order.dart';
 import '../../data/models/price.dart';
 import '../../data/models/stock.dart';
-import '../allocator/pricing.dart';
+import '../allocator/pricing_service.dart';
 
 sealed class ManualAllocationOutcome {
   const ManualAllocationOutcome();

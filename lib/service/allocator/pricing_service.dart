@@ -22,6 +22,5 @@ Money unitPriceForOrder({
     base = candidates.isEmpty ? 0 : candidates.first;
   }
 
-  // adjusted = round_bankers(base * multiplierBp / 10000)
   return bankersDiv(base * multiplierBp, 10000);
 }

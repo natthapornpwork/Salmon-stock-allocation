@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 class AllocationLine extends Equatable {
   final String warehouseId;
   final String supplierId;
-  final int qty; // Qty in hundredths
+  final int qty;
 
   const AllocationLine({
     required this.warehouseId,
