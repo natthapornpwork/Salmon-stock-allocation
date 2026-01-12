@@ -21,7 +21,7 @@ class AppRoot extends StatelessWidget {
         create: (ctx) => AllocationBloc(ctx.read<MockRepository>())
           ..add(const AllocationLoadRequested()),
         child: MaterialApp(
-          title: 'Allocation App',
+          title: 'Salmon Stock Allocation',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,

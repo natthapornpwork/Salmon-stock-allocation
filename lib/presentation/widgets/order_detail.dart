@@ -1,6 +1,7 @@
 import 'package:allocation_app/service/allocator/pricing_service.dart';
 import 'package:allocation_app/utils/order_type_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
@@ -604,9 +605,10 @@ class _BoxTextField extends StatelessWidget {
         onChanged: readOnly ? null : onChanged,
         focusNode: focusNode,
         autofocus: autofocus,
-        keyboardType: maxLines > 1
-            ? TextInputType.multiline
-            : (readOnly ? TextInputType.text : TextInputType.number),
+        keyboardType: readOnly ? TextInputType.text : TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9,]')),
+        ],
         decoration: InputDecoration(
           fillColor: cs.primaryContainer.withOpacity(0.10),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
