@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FVM
+        run: |
+          curl -fsSL https://fvm.app/install.sh | bash
+          echo "$HOME/.fvm/bin" >> $GITHUB_PATH
+
+      - name: Install Flutter 3.29.3
+        run: |
+          fvm install 3.29.3
+          fvm use 3.29.3
+
+      - name: Pub get
+        run: fvm flutter pub get
+
+      - name: Analyze
+        run: fvm flutter analyze
+
+      - name: Test
+        run: fvm flutter test
+
+  deploy_vercel:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FVM
+        run: |
+          curl -fsSL https://fvm.app/install.sh | bash
+          echo "$HOME/.fvm/bin" >> $GITHUB_PATH
+
+      - name: Install Flutter 3.29.3
+        run: |
+          fvm install 3.29.3
+          fvm use 3.29.3
+
+      - name: Build web
+        run: |
+          fvm flutter pub get
+          fvm flutter build web --release --web-renderer canvaskit
+
+      - name: Deploy to Vercel (prebuilt)
+        run: |
+          npm i -g vercel@latest
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
