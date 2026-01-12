@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,14 +29,19 @@ jobs:
           fvm flutter pub get
           fvm flutter build web --release
 
+      - name: Verify build output
+        run: |
+          ls -la build/web
+          test -f build/web/index.html
+
       - name: Deploy to Vercel
         run: |
           npm i -g vercel
+
           vercel pull --yes --environment=production \
             --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }}
 
-          # Deploy the already-built static site
-          vercel deploy build/web --prod \
+          vercel deploy build/web --prod --yes \
             --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }}
